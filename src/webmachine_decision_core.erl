@@ -32,7 +32,7 @@ handle_request(Resource, ReqState) ->
     try
         d(v3b13)
     catch
-        error:_ ->            
+        error:_ ->
             error_response(erlang:get_stacktrace())
     end.
 
@@ -58,7 +58,7 @@ d(DecisionID) ->
     put(decision, DecisionID),
     log_decision(DecisionID),
     decision(DecisionID).
-    
+
 respond(Code) ->
     Resource = get(resource),
     EndTime = now(),
@@ -67,7 +67,7 @@ respond(Code) ->
             {ok, ErrorHandler} = application:get_env(webmachine, error_handler),
             Reason = {none, none, []},
             {ErrorHTML,ReqState} = ErrorHandler:render_error(
-                          Code, {webmachine_request,get(reqstate)}, Reason),
+                                     Code, {webmachine_request,get(reqstate)}, Reason),
             put(reqstate, ReqState),
             wrcall({set_resp_body, ErrorHTML});
         304 ->
@@ -80,7 +80,7 @@ respond(Code) ->
                 undefined -> nop;
                 Exp ->
                     wrcall({set_resp_header, "Expires",
-                           httpd_util:rfc1123_date(
+                            httpd_util:rfc1123_date(
                               calendar:universal_time_to_local_time(Exp))})
             end;
         _ -> ignore
@@ -151,7 +151,7 @@ do_log(LogData) ->
             ignore
     end.
 
-log_decision(DecisionID) -> 
+log_decision(DecisionID) ->
     Resource = get(resource),
     Resource:log_d(DecisionID).
 
@@ -175,7 +175,7 @@ decision(v3b10) ->
             d(v3b9);
         false ->
             wrcall({set_resp_headers, [{"Allow",
-                   string:join([atom_to_list(M) || M <- Methods], ", ")}]}),
+                                        string:join([atom_to_list(M) || M <- Methods], ", ")}]}),
             respond(405)
     end;
 %% "Malformed?"
@@ -207,7 +207,7 @@ decision(v3b4) ->
     decision_test(resource_call(valid_entity_length), true, v3b3, 413);
 %% "OPTIONS?"
 decision(v3b3) ->
-    case method() of 
+    case method() of
         'OPTIONS' ->
             Hdrs = resource_call(options),
             respond(200, Hdrs);
@@ -254,7 +254,7 @@ decision(v3e6) ->
     decision_test(choose_charset(get_header_val("accept-charset")),
                   none, 406, v3f6);
 %% Accept-Encoding exists?
-% (also, set content-type header here, now that charset is chosen)
+                                                % (also, set content-type header here, now that charset is chosen)
 decision(v3f6) ->
     CType = wrcall({get_metadata, 'content-type'}),
     CSet = case wrcall({get_metadata, 'chosen-charset'}) of
@@ -274,7 +274,7 @@ decision(v3f7) ->
                   none, 406, v3g7);
 %% "Resource exists?"
 decision(v3g7) ->
-    % this is the first place after all conneg, so set Vary here
+                                                % this is the first place after all conneg, so set Vary here
     case variances() of
         [] -> nop;
         Variances ->
@@ -383,7 +383,7 @@ decision(v3l7) ->
 decision(v3l13) ->
     decision_test(get_header_val("if-modified-since"), undefined, v3m16, v3l14);
 %% "IMS is valid date?"
-decision(v3l14) -> 
+decision(v3l14) ->
     IMSDate = get_header_val("if-modified-since"),
     decision_test(webmachine_util:convert_request_date(IMSDate),
                   bad_date, v3m16, v3l15);
@@ -396,7 +396,7 @@ decision(v3l15) ->
                   true, v3m16, v3l17);
 %% "Last-Modified > IMS?"
 decision(v3l17) ->
-    ReqDate = get_header_val("if-modified-since"),    
+    ReqDate = get_header_val("if-modified-since"),
     ReqErlDate = webmachine_util:convert_request_date(ReqDate),
     ResErlDate = resource_call(last_modified),
     decision_test(ResErlDate =:= undefined orelse ResErlDate > ReqErlDate,
@@ -422,47 +422,47 @@ decision(v3n5) ->
 %% "Redirect?"
 decision(v3n11) ->
     Stage1 = case resource_call(post_is_create) of
-        true ->
-            case resource_call(create_path) of
-                undefined -> error_response("post_is_create w/o create_path");
-                NewPath ->
-                    case is_list(NewPath) of
-                        false -> error_response({"create_path not a string",NewPath});
-                        true ->
-                            BaseUri = case resource_call(base_uri) of
-                                undefined -> wrcall(base_uri);
-                                Any ->
-                                    case [lists:last(Any)] of
-                                        "/" -> lists:sublist(Any, erlang:length(Any) - 1);
-                                        _ -> Any
-                                    end
-                            end,
-                            FullPath = filename:join(["/", wrcall(path), NewPath]),
-                            wrcall({set_disp_path, FullPath}),
-                            case wrcall({get_resp_header, "Location"}) of
-                                undefined -> wrcall({set_resp_header, "Location", BaseUri ++ FullPath});
-                                _ -> ok
-                            end,
+                 true ->
+                     case resource_call(create_path) of
+                         undefined -> error_response("post_is_create w/o create_path");
+                         NewPath ->
+                             case is_list(NewPath) of
+                                 false -> error_response({"create_path not a string",NewPath});
+                                 true ->
+                                     BaseUri = case resource_call(base_uri) of
+                                                   undefined -> wrcall(base_uri);
+                                                   Any ->
+                                                       case [lists:last(Any)] of
+                                                           "/" -> lists:sublist(Any, erlang:length(Any) - 1);
+                                                           _ -> Any
+                                                       end
+                                               end,
+                                     FullPath = filename:join(["/", wrcall(path), NewPath]),
+                                     wrcall({set_disp_path, FullPath}),
+                                     case wrcall({get_resp_header, "Location"}) of
+                                         undefined -> wrcall({set_resp_header, "Location", BaseUri ++ FullPath});
+                                         _ -> ok
+                                     end,
 
-                            Res = accept_helper(),
-                            case Res of
-                                {respond, Code} -> respond(Code);
-                                {halt, Code} -> respond(Code);
-                                {error, _,_} -> error_response(Res);
-                                {error, _} -> error_response(Res);
-                                _ -> stage1_ok
-                            end
-                    end
-            end;
-        _ ->
-            case resource_call(process_post) of
-                true -> 
-                    encode_body_if_set(),
-                    stage1_ok;
-                {halt, Code} -> respond(Code);
-                Err -> error_response(Err)
-            end
-    end,
+                                     Res = accept_helper(),
+                                     case Res of
+                                         {respond, Code} -> respond(Code);
+                                         {halt, Code} -> respond(Code);
+                                         {error, _,_} -> error_response(Res);
+                                         {error, _} -> error_response(Res);
+                                         _ -> stage1_ok
+                                     end
+                             end
+                     end;
+                 _ ->
+                     case resource_call(process_post) of
+                         true ->
+                             encode_body_if_set(),
+                             stage1_ok;
+                         {halt, Code} -> respond(Code);
+                         Err -> error_response(Err)
+                     end
+             end,
     case Stage1 of
         stage1_ok ->
             case wrcall(resp_redirect) of
@@ -499,47 +499,47 @@ decision(v3o14) ->
 decision(v3o16) ->
     decision_test(method(), 'PUT', v3o14, v3o18);
 %% Multiple representations?
-% (also where body generation for GET and HEAD is done)
-decision(v3o18) ->    
+                                                % (also where body generation for GET and HEAD is done)
+decision(v3o18) ->
     BuildBody = case method() of
-        'GET' -> true;
-        'HEAD' -> true;
-        _ -> false
-    end,
+                    'GET' -> true;
+                    'HEAD' -> true;
+                    _ -> false
+                end,
     FinalBody = case BuildBody of
-        true ->
-            case resource_call(generate_etag) of
-                undefined -> nop;
-                ETag -> wrcall({set_resp_header, "ETag", webmachine_util:quoted_string(ETag)})
-            end,
-            CT = wrcall({get_metadata, 'content-type'}),
-            case resource_call(last_modified) of
-                undefined -> nop;
-                LM ->
-                    wrcall({set_resp_header, "Last-Modified",
-                           httpd_util:rfc1123_date(
-                             calendar:universal_time_to_local_time(LM))})
-            end,
-            case resource_call(expires) of
-                undefined -> nop;
-                Exp ->
-                    wrcall({set_resp_header, "Expires",
-                           httpd_util:rfc1123_date(
-                              calendar:universal_time_to_local_time(Exp))})
-            end,
-            FunL = lists:foldl(
-                     fun({{Type, Params}, Fun}, AccIn) ->
-                             case webmachine_util:format_content_type(Type, Params) =:= CT of
-                                 true -> [Fun|AccIn];
-                                 false -> AccIn
-                             end;
-                        ({Type, Fun}, AccIn) when Type =:= CT -> [Fun|AccIn];
-                        (_, AccIn) -> AccIn
-                     end, [], resource_call(content_types_provided)),
-            F = hd(lists:reverse(FunL)),
-            resource_call(F);
-        false -> nop
-    end,
+                    true ->
+                        case resource_call(generate_etag) of
+                            undefined -> nop;
+                            ETag -> wrcall({set_resp_header, "ETag", webmachine_util:quoted_string(ETag)})
+                        end,
+                        CT = wrcall({get_metadata, 'content-type'}),
+                        case resource_call(last_modified) of
+                            undefined -> nop;
+                            LM ->
+                                wrcall({set_resp_header, "Last-Modified",
+                                        httpd_util:rfc1123_date(
+                                          calendar:universal_time_to_local_time(LM))})
+                        end,
+                        case resource_call(expires) of
+                            undefined -> nop;
+                            Exp ->
+                                wrcall({set_resp_header, "Expires",
+                                        httpd_util:rfc1123_date(
+                                          calendar:universal_time_to_local_time(Exp))})
+                        end,
+                        FunL = lists:foldl(
+                                 fun({{Type, Params}, Fun}, AccIn) ->
+                                         case webmachine_util:format_content_type(Type, Params) =:= CT of
+                                             true -> [Fun|AccIn];
+                                             false -> AccIn
+                                         end;
+                                    ({Type, Fun}, AccIn) when Type =:= CT -> [Fun|AccIn];
+                                    (_, AccIn) -> AccIn
+                                 end, [], resource_call(content_types_provided)),
+                        F = hd(lists:reverse(FunL)),
+                        resource_call(F);
+                    false -> nop
+                end,
     case FinalBody of
         {error, _} -> error_response(FinalBody);
         {error, _,_} -> error_response(FinalBody);
@@ -607,11 +607,11 @@ encode_body_if_set() ->
 
 encode_body(Body) ->
     ChosenCSet = wrcall({get_metadata, 'chosen-charset'}),
-    Charsetter = 
-    case resource_call(charsets_provided) of
-        no_charset -> fun(X) -> X end;
-        CP -> hd([Fun || {CSet,Fun} <- CP, ChosenCSet =:= CSet])
-    end,
+    Charsetter =
+        case resource_call(charsets_provided) of
+            no_charset -> fun(X) -> X end;
+            CP -> hd([Fun || {CSet,Fun} <- CP, ChosenCSet =:= CSet])
+        end,
     ChosenEnc = wrcall({get_metadata, 'content-encoding'}),
     Encoder = hd([Fun || {Enc,Fun} <- resource_call(encodings_provided),
                          ChosenEnc =:= Enc]),
@@ -668,22 +668,22 @@ choose_charset(AccCharHdr) ->
 
 variances() ->
     Accept = case length(resource_call(content_types_provided)) of
-        1 -> [];
-        0 -> [];
-        _ -> ["Accept"]
-    end,
+                 1 -> [];
+                 0 -> [];
+                 _ -> ["Accept"]
+             end,
     AcceptEncoding = case length(resource_call(encodings_provided)) of
-        1 -> [];
-        0 -> [];
-        _ -> ["Accept-Encoding"]
-    end,
+                         1 -> [];
+                         0 -> [];
+                         _ -> ["Accept-Encoding"]
+                     end,
     AcceptCharset = case resource_call(charsets_provided) of
-        no_charset -> [];
-        CP ->
-            case length(CP) of
-                1 -> [];
-                0 -> [];
-                _ -> ["Accept-Charset"]
-            end
-    end,
+                        no_charset -> [];
+                        CP ->
+                            case length(CP) of
+                                1 -> [];
+                                0 -> [];
+                                _ -> ["Accept-Charset"]
+                            end
+                    end,
     Accept ++ AcceptEncoding ++ AcceptCharset ++ resource_call(variances).
